@@ -10,53 +10,49 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: pspdev/pspdev:latest
 
     steps:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Verify PSPSDK
+    - name: Install PSPSDK
       run: |
-        echo "PSPDEV=$PSPDEV"
+        wget -q https://github.com/pspdev/pspdev/releases/download/v20260701/pspdev-ubuntu-latest-x86_64.tar.gz -O /tmp/pspdev.tar.gz
+        sudo tar -xzf /tmp/pspdev.tar.gz -C /
+        echo "/usr/local/pspdev/psp/bin" >> $GITHUB_PATH
+        echo "/usr/local/pspdev/bin" >> $GITHUB_PATH
+        export PSPDEV=/usr/local/pspdev
+        export PATH=$PSPDEV/bin:$PATH
         psp-config --pspsdk-path
-        which psp-gcc
 
     - name: Build PSP game
       run: |
+        export PSPDEV=/usr/local/pspdev
+        export PATH=$PSPDEV/psp/bin:$PSPDEV/bin:$PATH
+        which psp-gcc
         make clean || true
         make
 
     - name: List build artifacts
-      run: |
-        ls -la EBOOT.PBP || echo "No EBOOT.PBP"
-        ls -la *.prx || echo "No PRX"
-        ls -la *.elf || echo "No ELF"
-        find . -name "*.pbp" -o -name "*.elf" -o -name "*.prx" 2>/dev/null
+      run: ls -la *.pbp *.elf 2>/dev/null || echo "Checking files..."
 
     - name: Create ISO
       run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq genisoimage
+        
         mkdir -p iso_root/PSP_GAME
         cp EBOOT.PBP iso_root/PSP_GAME/
         
-        # Create a basic PARAM.SFO using the SDK tool if available
+        # Create PARAM.SFO
+        export PSPDEV=/usr/local/pspdev
+        export PATH=$PSPDEV/bin:$PATH
         if command -v mksfo &> /dev/null; then
           mksfo "HELLO PSP GAME" iso_root/PSP_GAME/PARAM.SFO || true
         fi
         
-        # Create ISO using mkisofs/genisoimage
-        apt-get update -qq && apt-get install -y -qq genisoimage 2>/dev/null || true
-        
-        if command -v genisoimage &> /dev/null; then
-          genisoimage -A "HELLO PSP" -V "HELLO_PSP" -r -J -o game.iso iso_root/
-        elif command -v mkisofs &> /dev/null; then
-          mkisofs -A "HELLO PSP" -V "HELLO_PSP" -r -J -o game.iso iso_root/
-        else
-          echo "No ISO creation tool found, skipping ISO generation"
-        fi
-        
-        ls -la game.iso || echo "ISO not created"
+        genisoimage -A "HELLO PSP" -V "HELLO_PSP" -r -J -o game.iso iso_root/
+        ls -la game.iso
 
     - name: Upload EBOOT.PBP
       uses: actions/upload-artifact@v4
