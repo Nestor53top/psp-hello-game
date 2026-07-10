@@ -15,26 +15,16 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Install PSPSDK
-      run: |
-        wget -q https://github.com/pspdev/pspdev/releases/download/v20260701/pspdev-ubuntu-latest-x86_64.tar.gz -O /tmp/pspdev.tar.gz
-        sudo tar -xzf /tmp/pspdev.tar.gz -C /
-        echo "/usr/local/pspdev/psp/bin" >> $GITHUB_PATH
-        echo "/usr/local/pspdev/bin" >> $GITHUB_PATH
-        export PSPDEV=/usr/local/pspdev
-        export PATH=$PSPDEV/bin:$PATH
-        psp-config --pspsdk-path
-
     - name: Build PSP game
       run: |
-        export PSPDEV=/usr/local/pspdev
-        export PATH=$PSPDEV/psp/bin:$PSPDEV/bin:$PATH
-        which psp-gcc
-        make clean || true
-        make
+        docker run --rm -v ${{ github.workspace }}:/build -w /build pspdev/pspdev:latest sh -c "
+          make clean || true
+          make
+          ls -la EBOOT.PBP hello_psp.elf
+        "
 
-    - name: List build artifacts
-      run: ls -la *.pbp *.elf 2>/dev/null || echo "Checking files..."
+    - name: List build output
+      run: ls -la
 
     - name: Create ISO
       run: |
@@ -43,13 +33,6 @@ jobs:
         
         mkdir -p iso_root/PSP_GAME
         cp EBOOT.PBP iso_root/PSP_GAME/
-        
-        # Create PARAM.SFO
-        export PSPDEV=/usr/local/pspdev
-        export PATH=$PSPDEV/bin:$PATH
-        if command -v mksfo &> /dev/null; then
-          mksfo "HELLO PSP GAME" iso_root/PSP_GAME/PARAM.SFO || true
-        fi
         
         genisoimage -A "HELLO PSP" -V "HELLO_PSP" -r -J -o game.iso iso_root/
         ls -la game.iso
