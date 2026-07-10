@@ -13,10 +13,5 @@ LIBS = -lpspgu -lpspdisplay -lpspctrl -lpspkernel -lpsppower -lpspdebug
 EXTRA_TARGETS = $(PSP_EBOOT)
 PSP_EBOOT = EBOOT.PBP
 
-# Create PARAM.SFO with correct values
-PARAM_SFO = PARAM.SFO
-$(PARAM_SFO):
-	mksfo "HELLO PSP GAME" $(PARAM_SFO)
-
 PSPSDK = $(shell psp-config --pspsdk-path)
 include $(PSPSDK)/lib/build.mak
