@@ -24,7 +24,13 @@ jobs:
           echo '=== Rebuilding PARAM.SFO with CATEGORY ==='
           rm -f PARAM.SFO EBOOT.PBP
           mksfoex -d MEMSIZE=1 -s CATEGORY=UG -s DISC_ID=UCJS10041 -s DISC_VERSION=1.00 -d PARENTAL_LEVEL=1 'Hello PSP Game' PARAM.SFO
-          pack-pbp EBOOT.PBP PARAM.SFO NULL NULL NULL NULL hello_psp.elf NULL
+          
+          touch /tmp/empty.png
+          touch /tmp/empty.pmf
+          touch /tmp/empty.at3
+          touch /tmp/empty.psar
+          
+          pack-pbp EBOOT.PBP PARAM.SFO /tmp/empty.png /tmp/empty.pmf /tmp/empty.png /tmp/empty.png /tmp/empty.at3 hello_psp.elf /tmp/empty.psar
           
           echo '=== Final check ==='
           strings PARAM.SFO
