@@ -18,24 +18,16 @@ jobs:
     - name: Build PSP game
       run: |
         docker run --rm -v ${{ github.workspace }}:/build -w /build pspdev/pspdev:latest sh -c "
-          echo '=== Checking mksfoex ==='
-          which mksfoex || echo 'mksfoex not found'
-          mksfoex --help 2>&1 || true
-          
-          echo '=== Testing mksfoex ==='
-          mksfoex 'Test Game' /tmp/test.sfo
-          hexdump -C /tmp/test.sfo | head -10
-          
-          echo '=== Building ==='
           make clean || true
           make
           
-          echo '=== Checking PARAM.SFO ==='
-          if [ -f PARAM.SFO ]; then
-            hexdump -C PARAM.SFO | head -10
-            strings PARAM.SFO
-          fi
+          echo '=== Rebuilding PARAM.SFO with CATEGORY ==='
+          rm -f PARAM.SFO EBOOT.PBP
+          mksfoex -d MEMSIZE=1 -s CATEGORY=UG -s DISC_ID=UCJS10041 -s DISC_VERSION=1.00 -d PARENTAL_LEVEL=1 'Hello PSP Game' PARAM.SFO
+          pack-pbp EBOOT.PBP PARAM.SFO NULL NULL NULL NULL hello_psp.elf NULL
           
+          echo '=== Final check ==='
+          strings PARAM.SFO
           ls -la EBOOT.PBP hello_psp.elf
         "
 
