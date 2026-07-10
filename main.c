@@ -16,8 +16,6 @@ PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER);
 #define SCR_HEIGHT 272
 
 static unsigned int __attribute__((aligned(16))) list[262144];
-static unsigned int *fbp0 = (void *)0;
-static unsigned int *zbp = (void *)0;
 
 int exit_callback(int arg1, int arg2, void *common) {
     sceKernelExitGame();
@@ -62,21 +60,21 @@ void drawRect(int x, int y, int w, int h, unsigned int color) {
 int main(void) {
     SetupCallbacks();
 
-    sceDebugScreenInit();
-    sceDebugScreenSetBackColor(0xFF000000);
-    sceDebugScreenSetTextColor(0xFFFFFFFF);
-    sceDebugScreenClear();
+    pspDebugScreenInit();
+    pspDebugScreenSetBackColor(0xFF000000);
+    pspDebugScreenSetTextColor(0xFFFFFFFF);
+    pspDebugScreenClear();
 
-    sceDebugScreenSetXY(5, 3);
-    sceDebugScreenPrintf("=== Hello PSP Game ===");
-    sceDebugScreenSetXY(5, 5);
-    sceDebugScreenPrintf("A simple PSP homebrew");
-    sceDebugScreenSetXY(5, 7);
-    sceDebugScreenPrintf("Built with PSPSDK");
-    sceDebugScreenSetXY(5, 10);
-    sceDebugScreenPrintf("Press X to exit");
-    sceDebugScreenSetXY(5, 13);
-    sceDebugScreenPrintf("Press O to see colors!");
+    pspDebugScreenSetXY(5, 3);
+    pspDebugScreenPrintf("=== Hello PSP Game ===");
+    pspDebugScreenSetXY(5, 5);
+    pspDebugScreenPrintf("A simple PSP homebrew");
+    pspDebugScreenSetXY(5, 7);
+    pspDebugScreenPrintf("Built with PSPSDK");
+    pspDebugScreenSetXY(5, 10);
+    pspDebugScreenPrintf("Press X to exit");
+    pspDebugScreenSetXY(5, 13);
+    pspDebugScreenPrintf("Press O to see colors!");
 
     sceDisplaySetMode(0, SCR_WIDTH, SCR_HEIGHT);
     sceDisplayWaitVblankStart();
@@ -96,30 +94,30 @@ int main(void) {
             showColors = !showColors;
         }
 
-        sceDebugScreenClear();
-        sceDebugScreenSetXY(5, 3);
-        sceDebugScreenPrintf("=== Hello PSP Game ===");
-        sceDebugScreenSetXY(5, 5);
-        sceDebugScreenPrintf("A simple PSP homebrew");
-        sceDebugScreenSetXY(5, 7);
-        sceDebugScreenPrintf("Built with PSPSDK");
-        sceDebugScreenSetXY(5, 10);
-        sceDebugScreenPrintf("Press X to exit");
-        sceDebugScreenSetXY(5, 13);
-        sceDebugScreenPrintf("Press O: %s", showColors ? "COLORS ON" : "COLORS OFF");
+        pspDebugScreenClear();
+        pspDebugScreenSetXY(5, 3);
+        pspDebugScreenPrintf("=== Hello PSP Game ===");
+        pspDebugScreenSetXY(5, 5);
+        pspDebugScreenPrintf("A simple PSP homebrew");
+        pspDebugScreenSetXY(5, 7);
+        pspDebugScreenPrintf("Built with PSPSDK");
+        pspDebugScreenSetXY(5, 10);
+        pspDebugScreenPrintf("Press X to exit");
+        pspDebugScreenSetXY(5, 13);
+        pspDebugScreenPrintf("Press O: %s", showColors ? "COLORS ON" : "COLORS OFF");
 
         if (showColors) {
             sceGuStart(GU_DIRECT, list);
-            sceGuDrawBuffer(GU_PSM_8888, fbp0, BUF_WIDTH);
+            sceGuDrawBuffer(GU_PSM_8888, (void *)0, BUF_WIDTH);
             sceGuDispBuffer(SCR_WIDTH, SCR_HEIGHT, (void *)0x88000, BUF_WIDTH);
             sceGuDepthBuffer((void *)0x110000, BUF_WIDTH);
             sceGuClear(GU_COLOR_BUFFER_BIT | GU_DEPTH_BUFFER_BIT);
 
-            drawRect(20, 150, 80, 60, 0xFF0000FF);   // Red
-            drawRect(120, 150, 80, 60, 0xFF00FF00);   // Green
-            drawRect(220, 150, 80, 60, 0xFFFF0000);   // Blue
-            drawRect(320, 150, 80, 60, 0xFF00FFFF);   // Yellow
-            drawRect(420, 150, 60, 60, 0xFFFF00FF);   // Cyan
+            drawRect(20, 150, 80, 60, 0xFF0000FF);
+            drawRect(120, 150, 80, 60, 0xFF00FF00);
+            drawRect(220, 150, 80, 60, 0xFFFF0000);
+            drawRect(320, 150, 80, 60, 0xFF00FFFF);
+            drawRect(420, 150, 60, 60, 0xFFFF00FF);
 
             sceGuFinish();
             sceGuSync(0, 0);
