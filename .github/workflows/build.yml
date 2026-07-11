@@ -30,7 +30,9 @@ jobs:
           touch /tmp/empty.at3
           touch /tmp/empty.psar
           
-          pack-pbp EBOOT.PBP PARAM.SFO /tmp/empty.png /tmp/empty.pmf /tmp/empty.png /tmp/empty.png /tmp/empty.at3 hello_psp.elf /tmp/empty.psar
+          psp-strip hello_psp.elf -o hello_psp_strip.elf
+          pack-pbp EBOOT.PBP PARAM.SFO /tmp/empty.png /tmp/empty.pmf /tmp/empty.png /tmp/empty.png /tmp/empty.at3 hello_psp_strip.elf /tmp/empty.psar
+          rm -f hello_psp_strip.elf
           
           echo '=== Final check ==='
           strings PARAM.SFO
