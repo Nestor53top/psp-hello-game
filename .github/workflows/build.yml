@@ -20,24 +20,114 @@ jobs:
         docker run --rm -v ${{ github.workspace }}:/build -w /build pspdev/pspdev:latest sh -c "
           make clean || true
           make
-          
-          echo '=== Rebuilding PARAM.SFO with CATEGORY ==='
-          rm -f PARAM.SFO EBOOT.PBP
-          mksfoex -d MEMSIZE=1 -s CATEGORY=UG -s DISC_ID=UCJS10041 -s DISC_VERSION=1.00 -d PARENTAL_LEVEL=1 'Hello PSP Game' PARAM.SFO
-          
-          touch /tmp/empty.png
-          touch /tmp/empty.pmf
-          touch /tmp/empty.at3
-          touch /tmp/empty.psar
-          
           psp-strip hello_psp.elf -o hello_psp_strip.elf
-          pack-pbp EBOOT.PBP PARAM.SFO /tmp/empty.png /tmp/empty.pmf /tmp/empty.png /tmp/empty.png /tmp/empty.at3 hello_psp_strip.elf /tmp/empty.psar
-          rm -f hello_psp_strip.elf
-          
-          echo '=== Final check ==='
-          strings PARAM.SFO
-          ls -la EBOOT.PBP hello_psp.elf
         "
+
+    - name: Create EBOOT.PBP
+      run: |
+        python3 << 'PYEOF'
+        import struct, os
+
+        def create_sfo(title, category="UG", disc_id="UCJS10041", disc_ver="1.00", parental=1):
+            keys = b""
+            vals = b""
+            items = []
+
+            fields = [
+                ("BOOTABLE", b"\x01\x00\x00\x00", 0x04),
+                ("CATEGORY", category.encode("ascii") + b"\x00", 0x02),
+                ("DISC_ID", disc_id.encode("ascii") + b"\x00", 0x02),
+                ("DISC_VERSION", disc_ver.encode("ascii") + b"\x00", 0x02),
+                ("MEMSIZE", b"\x01\x00\x00\x00", 0x04),
+                ("PARENTAL_LEVEL", struct.pack("<I", parental), 0x04),
+                ("PSP_SYSTEM_VER", b"\x01\x00\x00\x00", 0x04),
+                ("REGION", b"\x00\x00\x00\x00", 0x04),
+                ("TITLE", title.encode("utf-8") + b"\x00", 0x02),
+            ]
+
+            for name, data, flag in fields:
+                items.append((name, data, flag))
+
+            # Sort by name for SFO format
+            items.sort(key=lambda x: x[0])
+
+            key_table = b""
+            val_table = b""
+            key_offsets = []
+            val_offsets = []
+
+            for name, data, flag in items:
+                key_offsets.append(len(key_table))
+                key_table += name.encode("ascii") + b"\x00"
+
+            for name, data, flag in items:
+                val_offsets.append(len(val_table))
+                val_table += data
+
+            # SFO header
+            header_size = 20
+            key_table_offset = header_size
+            val_table_offset = key_table_offset + len(key_table)
+            n_items = len(items)
+
+            sfo = struct.pack("<4sIIII", b"\x00PSF", 0x0101, key_table_offset, val_table_offset, n_items)
+
+            # Key entries (12 bytes each)
+            for i, (name, data, flag) in enumerate(items):
+                sfo += struct.pack("<HBB", key_offsets[i], 0x04, 0x04)
+
+            # Value entries (16 bytes each)
+            for i, (name, data, flag) in enumerate(items):
+                sfo += struct.pack("<HHIH", val_offsets[i], flag, len(data), 0x0000)
+
+            # Pad to alignment
+            while len(sfo) % 4:
+                sfo += b"\x00"
+
+            sfo += key_table
+            while len(sfo) % 4:
+                sfo += b"\x00"
+
+            sfo += val_table
+            while len(sfo) % 4:
+                sfo += b"\x00"
+
+            return sfo
+
+        # Read ELF
+        with open("hello_psp_strip.elf", "rb") as f:
+            elf_data = f.read()
+
+        # Create PARAM.SFO
+        sfo_data = create_sfo("Hello PSP Game")
+
+        # Create PBP
+        pbp_header = b"\x00PBP"  # magic
+        pbp_header += struct.pack("<I", 0x00010000)  # version
+
+        # Offsets: PARAM.SFO, ICON0, ICON1, PIC0, PIC1, SND0, DATA.PSP, DATA.PSAR
+        # Header is 8 + 9*4 = 44 bytes
+        # We put PARAM.SFO right after header, ELF after that
+        header_size = 8 + 9 * 4  # = 44
+        sfo_offset = header_size
+        elf_offset = sfo_offset + len(sfo_data)
+        # All other offsets point to elf_offset (empty)
+        offsets = [sfo_offset, elf_offset, elf_offset, elf_offset, elf_offset, elf_offset, elf_offset, elf_offset]
+
+        pbp = pbp_header
+        for o in offsets:
+            pbp += struct.pack("<I", o)
+
+        pbp += sfo_data
+        pbp += elf_data
+
+        with open("EBOOT.PBP", "wb") as f:
+            f.write(pbp)
+
+        print(f"Created EBOOT.PBP: {len(pbp)} bytes")
+        print(f"  PARAM.SFO: {len(sfo_data)} bytes at offset {sfo_offset}")
+        print(f"  ELF: {len(elf_data)} bytes at offset {elf_offset}")
+        PYEOF
 
     - name: Create ISO
       run: |
@@ -46,7 +136,6 @@ jobs:
         mkdir -p iso_root/PSP_GAME
         cp EBOOT.PBP iso_root/PSP_GAME/
         genisoimage -A "HELLO PSP" -V "HELLO_PSP" -r -J -o game.iso iso_root/
-        ls -la game.iso
 
     - name: Upload EBOOT.PBP
       uses: actions/upload-artifact@v4
