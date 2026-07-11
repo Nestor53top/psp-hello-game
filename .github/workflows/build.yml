@@ -25,6 +25,7 @@ jobs:
 
     - name: Create EBOOT.PBP
       run: |
+        rm -f EBOOT.PBP PARAM.SFO
         python3 << 'PYEOF'
         import struct, os
 
